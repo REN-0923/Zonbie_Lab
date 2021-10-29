@@ -18,13 +18,16 @@ class Player:
         #プレイヤーの描画タイル 上32,33 下0,1 左34,35 右2,3 
         self.image = 32
 
+        #プレイヤーが移動中かどうか
+        self.is_moving = False
+
 class App:
 
     def __init__(self):
         
         self.player = Player()
         
-        pyxel.init(128,128,caption="Battle Tower", fps=25)
+        pyxel.init(128,128,caption="Battle Tower", fps=20)
 
         pyxel.load("tower.pyxres")
 
@@ -55,28 +58,36 @@ class App:
         pyxel.bltm(base_x,base_y,tm,u,v,w,h)
 
     def player_move(self):
+
+        map_x = self.player.dot_x/8
+        map_y = self.player.dot_y/8
         #上に移動
-        if pyxel.tilemap(0).get(self.player.map_x, self.player.map_y-1) == 36:
-            if pyxel.btnp(pyxel.KEY_UP):
-                self.player.dot_y = self.player.dot_y - 8
-                self.player.vectol = 0
+        if pyxel.tilemap(0).get(map_x, map_y-1) == 36:
+            if pyxel.btn(pyxel.KEY_UP):
+                if pyxel.frame_count % 3 == 0:
+                    self.player.dot_y = self.player.dot_y - 8
+                    self.player.vectol = 0
+            
         
         #下に移動
-        if pyxel.tilemap(0).get(self.player.map_x, self.player.map_y+1) == 36:
-            if pyxel.btnp(pyxel.KEY_DOWN):
-                self.player.dot_y = self.player.dot_y + 8
-                self.player.vectol = 1
+        if pyxel.tilemap(0).get(map_x, map_y+1) == 36:
+            if pyxel.btn(pyxel.KEY_DOWN):
+                if pyxel.frame_count % 3 == 0:
+                    self.player.dot_y = self.player.dot_y + 8
+                    self.player.vectol = 1
             
         #左に移動
-        if pyxel.tilemap(0).get(self.player.map_x-1, self.player.map_y) == 36:
-            if pyxel.btnp(pyxel.KEY_LEFT):
-                self.player.dot_x = self.player.dot_x - 8
-                self.player.vectol = 2
+        if pyxel.tilemap(0).get(map_x-1, map_y) == 36:
+            if pyxel.btn(pyxel.KEY_LEFT):
+                if pyxel.frame_count % 3 == 0:
+                    self.player.dot_x = self.player.dot_x - 8
+                    self.player.vectol = 2
         #右に移動
-        if pyxel.tilemap(0).get(self.player.map_x+1, self.player.map_y) == 36:
-            if pyxel.btnp(pyxel.KEY_RIGHT):
-                self.player.dot_x = self.player.dot_x + 8
-                self.player.vectol = 3
+        if pyxel.tilemap(0).get(map_x+1, map_y) == 36:
+            if pyxel.btn(pyxel.KEY_RIGHT):
+                if pyxel.frame_count % 3 == 0:
+                    self.player.dot_x = self.player.dot_x + 8
+                    self.player.vectol = 3
 
     def player_draw(self):
         
