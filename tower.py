@@ -1,5 +1,6 @@
 import pyxel
 
+###プレイヤークラス###########################################
 class Player:
 
     def __init__(self):
@@ -9,8 +10,8 @@ class Player:
         self.dot_y = 24
 
         #プレイヤーのタイルマップ上の座標
-        self.map_x = int(self.dot_x / 8)
-        self.map_y = int(self.dot_y / 8)
+        #self.map_x = int(self.dot_x / 8)
+        #self.map_y = int(self.dot_y / 8)
 
         #プレイヤーの向き 0上 1下 2左 3右
         self.vectol = 0
@@ -26,10 +27,17 @@ class Player:
         self.map_count_x = 1
         self.map_count_y = 1
 
+        #マップ移動した瞬間1になる。普通は0
+        self.map_move = 0
+
+        #残り弾数
+        self.bullet = 100
+
     def player_udate(self, x, y):
         self.dot_x = x
         self.dot_y = y
 
+###銃弾クラス###################################################
 class Shot:
     def __init__(self):
         self.shot_x = 0
@@ -42,16 +50,37 @@ class Shot:
         self.shot_y = y
         self.vectol = vec
 
-class App:
+###敵クラス#####################################################
+class Enemy1:
+    def __init__(self, x, y):
+        #実際座標
+        self.dot_x = x
+        self.dot_y = y
+        #向き
+        self.vectol = 0
+        #HPだから二発当たると死ぬ
+        self.hp = 2
 
+    def update(self, x, y, vec):
+        self.dot_x = x
+        self.dot_y = y
+        self.vectol = vec
+
+
+###ゲームクラス##################################################
+class App:
     def __init__(self):
         
         self.player = Player()
-        
+        #敵の状況
+        self.enemies = []
+        self.enemy_pos_x = [10]
+        self.enemy_pos_y = [10]
+        self.enemy_vectol = [0]
         #タマ格納
         self.shots = []
         
-        pyxel.init(128,128,caption="Battle Tower", fps=20)
+        pyxel.init(128,136,caption="Battle Tower", fps=20)
 
         pyxel.load("tower.pyxres")
 
@@ -63,6 +92,8 @@ class App:
 
         self.player_move()
         self.player_shot()
+        self.create_enemy()
+        self.hit_enemy()
 
         if pyxel.btnp(pyxel.KEY_Q):
             pyxel.quit()
@@ -72,9 +103,17 @@ class App:
         self.tilemap_draw()
         self.player_draw()
         self.draw_shot()
-        
+        self.draw_enemy()
+        #残り弾数表示(0になると煽られる)
+        bullet = str(self.player.bullet)
+        text = "Bullet:" + bullet
+        if self.player.bullet > 0:
+            pyxel.text(8, 128, text, 7)
+        else:
+            pyxel.text(8, 128, "Good Luck", 7)
         #デバッグ
-        print(len(self.shots))
+        for e in self.enemies:
+            print(e.hp)
     def tilemap_draw(self):
         base_x = 0
         base_y = 0
@@ -93,7 +132,7 @@ class App:
         map_x = self.player.dot_x/8 + x
         map_y = self.player.dot_y/8 + y
         #上に移動
-        if pyxel.tilemap(0).get(map_x, map_y-1) == 36:
+        if 41 >= pyxel.tilemap(0).get(map_x, map_y-1) >= 36:
             if pyxel.btn(pyxel.KEY_UP):
                 if pyxel.frame_count % 3 == 0:
                     self.player.dot_y = self.player.dot_y - 8
@@ -102,9 +141,10 @@ class App:
                     self.player.minimap_y -= 16
                     self.player.map_count_y -= 1
                     self.player.player_udate(self.player.dot_x, 120)
+                    self.player.map_move = 1
         
         #下に移動
-        if pyxel.tilemap(0).get(map_x, map_y+1) == 36:
+        if 41 >= pyxel.tilemap(0).get(map_x, map_y+1) >= 36:
             if pyxel.btn(pyxel.KEY_DOWN):
                 if pyxel.frame_count % 3 == 0:
                     self.player.dot_y = self.player.dot_y + 8
@@ -113,9 +153,10 @@ class App:
                     self.player.minimap_y += 16
                     self.player.map_count_y += 1
                     self.player.player_udate(self.player.dot_x, 8)
+                    self.player.map_move = 1
             
         #左に移動
-        if pyxel.tilemap(0).get(map_x-1, map_y) == 36:
+        if 41 >= pyxel.tilemap(0).get(map_x-1, map_y) >= 36:
             if pyxel.btn(pyxel.KEY_LEFT):
                 if pyxel.frame_count % 3 == 0:
                     self.player.dot_x = self.player.dot_x - 8
@@ -125,9 +166,10 @@ class App:
                     self.player.minimap_x -= 16
                     self.player.map_count_x -= 1
                     self.player.player_udate(120, self.player.dot_y)
+                    self.player.map_move = 1
 
         #右に移動
-        if pyxel.tilemap(0).get(map_x+1, map_y) == 36:
+        if 41 >= pyxel.tilemap(0).get(map_x+1, map_y) >= 36:
             if pyxel.btn(pyxel.KEY_RIGHT):
                 if pyxel.frame_count % 3 == 0:
                     self.player.dot_x = self.player.dot_x + 8
@@ -137,16 +179,44 @@ class App:
                     self.player.minimap_x += 16
                     self.player.map_count_x += 1
                     self.player.player_udate(8, self.player.dot_y)
+                    self.player.map_move = 1
         
     #たま発射
     def player_shot(self):
         if pyxel.btnp(pyxel.KEY_SPACE):
             #if len(self.shots) < 3:
-            new_shot = Shot()
-            new_shot.vectol = self.player.vectol
-            new_shot.shot_update(self.player.dot_x, self.player.dot_y, new_shot.vectol)
-            self.shots.append(new_shot)    
-    
+            if self.player.bullet > 0:
+                new_shot = Shot()
+                self.player.bullet -= 1
+                new_shot.vectol = self.player.vectol
+                new_shot.shot_update(self.player.dot_x, self.player.dot_y, new_shot.vectol)
+                self.shots.append(new_shot)   
+    #敵発生
+    def create_enemy(self):
+        if self.player.map_move == 1:
+            self.enemies.clear()
+            enemy_x = self.enemy_pos_x
+            enemy_y = self.enemy_pos_y
+            enemy_num = len(enemy_x)
+            for i in range(enemy_num):
+                new_enemy = Enemy1(enemy_x[i]*8, enemy_y[i]*8)
+                self.enemies.append(new_enemy)
+        self.player.map_move = 0     
+     
+    #敵と銃弾の当たり判定
+    def hit_enemy(self):
+        for e in self.enemies:
+            enemy_x = e.dot_x
+            enemy_y = e.dot_y
+            for s in self.shots:
+                shot_x = s.shot_x
+                shot_y = s.shot_y
+                if ((enemy_x <= shot_x < enemy_x+8) and (enemy_y <= shot_y < enemy_y+8)):
+                    e.hp -= 1
+                    self.shots = [item for item in self.shots if item != s]
+                    if e.hp == 0:
+                        self.enemies = [item for item in self.enemies if item != e]
+
     #たま描画
     def draw_shot(self):
         for i in self.shots:
@@ -154,7 +224,7 @@ class App:
             y = 16*(self.player.map_count_y -1)
             shot_map_x = i.shot_x / 8 + x
             shot_map_y = i.shot_y / 8 + y
-            if 0 < i.shot_x and i.shot_x < 128 and pyxel.tilemap(0).get(shot_map_x, shot_map_y) == 36:
+            if 0 < i.shot_x and i.shot_x < 128 and 41 >= pyxel.tilemap(0).get(shot_map_x, shot_map_y) >= 36:
                 #左ショット
                 if i.vectol == 2:
                     pyxel.rect(i.shot_x, i.shot_y+1, 2, 2, 10)
@@ -166,7 +236,7 @@ class App:
             else:
                 self.shots = [item for item in self.shots if item != i]
 
-            if 0 < i.shot_y and i.shot_y < 128 and pyxel.tilemap(0).get(shot_map_x, shot_map_y) == 36: 
+            if 0 < i.shot_y and i.shot_y < 128 and 41 >= pyxel.tilemap(0).get(shot_map_x, shot_map_y) >= 36: 
                 #上ショット
                 if i.vectol == 0:
                     pyxel.rect(i.shot_x+1, i.shot_y, 2, 2, 10)
@@ -220,4 +290,48 @@ class App:
         
         pyxel.blt(self.player.dot_x, self.player.dot_y, 0, u, v, 8, 8, 0)
 
+#ゾンビ描画
+    def draw_enemy(self):
+        enemy_num = len(self.enemies)
+        for e in self.enemies:
+            #プレイヤーとゾンビの距離からゾンビの向きを考えてみた
+            compare_x = self.player.dot_x - e.dot_x
+            compare_y = self.player.dot_y - e.dot_y
+            if compare_x <= 0 and compare_y <= 0:
+            #absで分岐させたほうがいいとか思ってるかも知れんけどわかってるから。アホやなとか思うな
+            #0上 1下 2左 3右
+                if abs(compare_x) > abs(compare_y):
+                    e.update(e.dot_x, e.dot_y, 2)                 
+                    pyxel.blt(e.dot_x, e.dot_y, 0, 2*8, 16, 8, 8, 0)
+
+                if abs(compare_x) <= abs(compare_y):
+                    e.update(e.dot_x, e.dot_y, 0)
+                    pyxel.blt(e.dot_x, e.dot_y, 0, 0*8, 16, 8, 8, 0)
+
+            if compare_x <= 0 and compare_y > 0:
+                if abs(compare_x) > abs(compare_y):
+                    e.update(e.dot_x, e.dot_y, 2)         
+                    pyxel.blt(e.dot_x, e.dot_y, 0, 2*8, 16, 8, 8, 0)
+
+                if abs(compare_x) <= abs(compare_y):
+                    e.update(e.dot_x, e.dot_y, 1)
+                    pyxel.blt(e.dot_x, e.dot_y, 0, 1*8, 16, 8, 8, 0)
+
+            if compare_x > 0 and compare_y <= 0:
+                if abs(compare_x) > abs(compare_y):
+                    e.update(e.dot_x, e.dot_y, 3)
+                    pyxel.blt(e.dot_x, e.dot_y, 0, 3*8, 16, 8, 8, 0)
+
+                if abs(compare_x) <= abs(compare_y):
+                    e.update(e.dot_x, e.dot_y, 0) 
+                    pyxel.blt(e.dot_x, e.dot_y, 0, 0*8, 16, 8, 8, 0)
+
+            if compare_x > 0 and compare_y > 0:
+                if abs(compare_x) > abs(compare_y):
+                    e.update(e.dot_x, e.dot_y, 3)
+                    pyxel.blt(e.dot_x, e.dot_y, 0, 3*8, 16, 8, 8, 0)
+                    
+                if abs(compare_x) <= abs(compare_y):
+                    e.update(e.dot_x, e.dot_y, 1)
+                    pyxel.blt(e.dot_x, e.dot_y, 0, 1*8, 16, 8, 8, 0)
 App()
