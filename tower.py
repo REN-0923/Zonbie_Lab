@@ -37,6 +37,12 @@ class Player:
         self.dot_x = x
         self.dot_y = y
 
+    def player_warp(self, min_x, min_y, mc_x, mc_y):
+        self.minimap_x = min_x
+        self.minimap_y = min_y
+        self.map_count_x = mc_x
+        self.map_count_y = mc_y
+
 ###銃弾クラス###################################################
 class Shot:
     def __init__(self):
@@ -94,7 +100,7 @@ class App:
         self.player_shot()
         self.create_enemy()
         self.hit_enemy()
-
+        self.player_hole()
         if pyxel.btnp(pyxel.KEY_Q):
             pyxel.quit()
 
@@ -112,8 +118,7 @@ class App:
         else:
             pyxel.text(8, 128, "Good Luck", 7)
         #デバッグ
-        for e in self.enemies:
-            print(e.hp)
+        print(self.player.map_count_x)
     def tilemap_draw(self):
         base_x = 0
         base_y = 0
@@ -216,7 +221,17 @@ class App:
                     self.shots = [item for item in self.shots if item != s]
                     if e.hp == 0:
                         self.enemies = [item for item in self.enemies if item != e]
+    
+    #プレイヤーが穴に落ちたら振り出しに
+    def player_hole(self):
+        x = 16*(self.player.map_count_x -1)
+        y = 16*(self.player.map_count_y -1)
+        map_x = self.player.dot_x/8 + x
+        map_y = self.player.dot_y/8 + y
 
+        if pyxel.tilemap(0).get(map_x, map_y) == 37:            
+            self.player.player_warp(0,0,1,1)
+            self.player.player_udate(16, 24)
     #たま描画
     def draw_shot(self):
         for i in self.shots:
