@@ -33,6 +33,9 @@ class Player:
         #残り弾数
         self.bullet = 100
 
+        #HP
+        self.hp = 100
+        
     def player_udate(self, x, y):
         self.dot_x = x
         self.dot_y = y
@@ -83,9 +86,16 @@ class App:
         self.enemy_pos_x = [10]
         self.enemy_pos_y = [10]
         self.enemy_vectol = [0]
+
         #タマ格納
         self.shots = []
-        
+
+        #ゲームオーバーかどうか
+        self.game_over = False
+
+        #ゲームやってんのかメニューなのか
+        self.game_start = True
+
         pyxel.init(128,136,caption="Battle Tower", fps=20)
 
         pyxel.load("tower.pyxres")
@@ -101,8 +111,15 @@ class App:
         self.create_enemy()
         self.hit_enemy()
         self.player_hole()
+        self.damage_player()
+
         if pyxel.btnp(pyxel.KEY_Q):
             pyxel.quit()
+        if pyxel.btnp(pyxel.KEY_R) and self.game_start == False:
+            self.game_start == True
+            self.restart()
+            
+
 
     def draw(self):
         pyxel.cls(0)
@@ -110,15 +127,46 @@ class App:
         self.player_draw()
         self.draw_shot()
         self.draw_enemy()
-        #残り弾数表示(0になると煽られる)
+        #ステータス取得
         bullet = str(self.player.bullet)
-        text = "Bullet:" + bullet
+        hp = str(self.player.hp)
+
+        #文字にしていく
+        text_bulet = "Bullet:" + bullet
+        text_hp = "HP:" + hp
+
+        #残弾表示(0になると煽られる)
         if self.player.bullet > 0:
-            pyxel.text(8, 128, text, 7)
+            pyxel.text(8, 128, text_bulet, 7)
         else:
             pyxel.text(8, 128, "Good Luck", 7)
-        #デバッグ
-        print(self.player.map_count_x)
+
+        #HP表示
+        if self.player.hp <= 10:
+            pyxel.text(56, 128, text_hp, 8)
+        else:
+            pyxel.text(56, 128, text_hp, 7)
+
+        #ゲームオーバー画面
+        if self.game_over == True:
+            self.game_start = False
+            pyxel.cls(0)
+            pyxel.text(20, 30, "YOU ARE DEAD", 8)
+            pyxel.text(20, 70, "R = RETRY", 8)
+            pyxel.blt(88, 96, 0, 0, 32, 32, 32, 7)
+            pyxel.blt(24, 88, 0, 32, 32, 16, 16, 7)
+            pyxel.blt(16, 112, 0, 32, 48, 16, 16, 7)
+
+    def restart(self):
+        self.player = Player()
+        self.enemies = []
+        self.enemy_pos_x = [10]
+        self.enemy_pos_y = [10]
+        self.enemy_vectol = [0]
+        self.shots = []
+        self.game_over = False
+        self.game_start = True
+
     def tilemap_draw(self):
         base_x = 0
         base_y = 0
@@ -232,6 +280,16 @@ class App:
         if pyxel.tilemap(0).get(map_x, map_y) == 37:            
             self.player.player_warp(0,0,1,1)
             self.player.player_udate(16, 24)
+
+    #プレイヤーがゾンビに触れるとHP下がる
+    def damage_player(self):
+        for e in self.enemies:
+            if (e.dot_x <= self.player.dot_x < e.dot_x + 8) and (e.dot_y <= self.player.dot_y < e.dot_y + 8):
+                self.player.hp -= 1
+                if self.player.hp <= 0:
+                    self.game_over = True
+
+
     #たま描画
     def draw_shot(self):
         for i in self.shots:
@@ -313,7 +371,7 @@ class App:
             compare_x = self.player.dot_x - e.dot_x
             compare_y = self.player.dot_y - e.dot_y
             if compare_x <= 0 and compare_y <= 0:
-            #absで分岐させたほうがいいとか思ってるかも知れんけどわかってるから。アホやなとか思うな
+            #absで分岐させたほうがいいとか思ってるかも知れんけどわかってる。アホやった
             #0上 1下 2左 3右
                 if abs(compare_x) > abs(compare_y):
                     e.update(e.dot_x, e.dot_y, 2)                 
