@@ -146,7 +146,7 @@ class App:
 
         pyxel.init(128,136,caption="Battle Tower", fps=20)
 
-        pyxel.load("tower.pyxres")
+        pyxel.load("asset//tower.pyxres")
 
         pyxel.run(self.update, self.draw)
 
@@ -213,11 +213,6 @@ class App:
             pyxel.cls(0)
             pyxel.text(20, 30, "CLEAR!", 10)
             pyxel.text(20, 70, "Q = QUIT", 10)
-
-        tgt_map_x = int(self.player.minimap_x / 16)
-        tgt_map_y = int(self.player.minimap_y / 16)
-        xy_key = str(tgt_map_x) + "-" + str(tgt_map_y)
-        print(xy_key)
 
     #Rキー押された時
     def restart(self):
